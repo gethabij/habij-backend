@@ -1,14 +1,12 @@
 # Habij Backend
 
----
-
 ## Setup Instructions
 
 ### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/gethabij/habij-backend.git
-cd habij
+cd habij-backend
 ```
 
 ### 2. Install Dependencies
@@ -39,8 +37,6 @@ python manage.py runserver
 
 Open your browser at `http://127.0.0.1:8000`.
 
----
-
 ## Tools and Configuration
 
 ### Pre-commit Hooks
@@ -65,8 +61,6 @@ Run Ruff manually:
 ruff check .
 ```
 
----
-
 ## Contributing
 
 1. Fork the repository.
@@ -74,8 +68,6 @@ ruff check .
 3. Commit your changes (`git commit -m 'Add feature'`).
 4. Push to the branch (`git push origin feature-branch`).
 5. Open a pull request.
-
----
 
 ## License
 
