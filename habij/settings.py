@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "journal",
+    "drf_spectacular",
 ]
 
 MIDDLEWARE = [
@@ -71,6 +72,32 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "habij.wsgi.application"
 
+
+# SPECTACULAR SETTINGS
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Habij API",
+    "DESCRIPTION": "Habij project",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": "/api/",
+    "SERVE_AUTHENTICATION": None,
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": True,
+        "displayOperationId": True,
+        "filter": True,
+    },
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SORT_OPERATIONS": False,
+}
+
+
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_PERMISSION_CLASSES": [],
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
+}
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
