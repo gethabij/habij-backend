@@ -10,6 +10,8 @@ python = "^3.10"
 django = "^5.1.4"
 djangorestframework = "^3.15.2"
 drf-spectacular = "^0.28.0"
+psycopg2-binary = "^2.9.10"
+python-decouple = "^3.8"
 
 
 [tool.poetry.group.dev.dependencies]
