@@ -1,7 +1,11 @@
-from django.urls import path
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
 
-from .views import HealthCheckView
+from .views import JournalLogViewSet
+
+router = DefaultRouter()
+router.register(r"journal-logs", JournalLogViewSet, basename="journal-logs")
 
 urlpatterns = [
-    path("health/", HealthCheckView.as_view(), name="health-check"),
+    path("", include(router.urls)),
 ]
