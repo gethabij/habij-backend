@@ -1,7 +1,7 @@
 # users/views.py
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.exceptions import TokenError
@@ -10,7 +10,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .models import User
 from .permissions import IsUserOrAdmin
-from .serializers import LoginSerializer, UserCreateSerializer, UserDetailSerializer
+from .serializers import LoginSerializer, SignUpSerializer, UserCreateSerializer, UserDetailSerializer
 
 
 class LoginView(TokenObtainPairView):
@@ -61,6 +61,58 @@ def logout_view(request):
         return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
     except KeyError:
         return Response({"error": "Refresh token is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    summary="User signup",
+    description="Register a new user account",
+    request=SignUpSerializer,
+    responses={
+        201: {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"},
+                        "email": {"type": "string"},
+                        "first_name": {"type": "string"},
+                        "last_name": {"type": "string"},
+                    },
+                },
+                "tokens": {
+                    "type": "object",
+                    "properties": {
+                        "access": {"type": "string"},
+                        "refresh": {"type": "string"},
+                    },
+                },
+            },
+        }
+    },
+)
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def signup_view(request):
+    serializer = SignUpSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+
+        # Generate tokens
+        refresh = RefreshToken.for_user(user)
+
+        return Response(
+            {
+                "user": {"id": user.id, "email": user.email},
+                "tokens": {
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ModelViewSet):
