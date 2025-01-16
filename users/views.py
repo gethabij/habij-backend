@@ -1,4 +1,5 @@
 # users/views.py
+from django.conf import settings
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -16,6 +17,26 @@ from .serializers import LoginSerializer, SignUpSerializer, UserCreateSerializer
 class LoginView(TokenObtainPairView):
     permission_classes = (AllowAny,)
     serializer_class = LoginSerializer
+
+    def set_token_cookies(self, response, access_token, refresh_token):
+        response.set_cookie(
+            "access_token",
+            access_token,
+            max_age=int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds()),
+            httponly=True,
+            secure=settings.JWT_COOKIE_SECURE,
+            samesite="Lax",
+            domain=None,  # Important for localhost
+        )
+        response.set_cookie(
+            "refresh_token",
+            refresh_token,
+            max_age=int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds()),
+            httponly=True,
+            secure=settings.JWT_COOKIE_SECURE,
+            samesite="Lax",
+            domain=None,  # Important for localhost
+        )
 
     @extend_schema(
         summary="User login",
@@ -40,27 +61,52 @@ class LoginView(TokenObtainPairView):
         },
     )
     def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            self.set_token_cookies(response, response.data["access"], response.data["refresh"])
+            response["Authorization"] = f"Bearer {response.data['access']}"
+        return response
 
 
 class CustomTokenRefreshView(TokenRefreshView):
     @extend_schema(summary="Refresh token", description="Get new access token using refresh token")
     def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+        # Try to get refresh token from cookie if not in body
+        refresh_token = request.COOKIES.get("refresh_token")
+        if refresh_token and "refresh" not in request.data:
+            request.data["refresh"] = refresh_token
+
+        response = super().post(request, *args, **kwargs)
+
+        if response.status_code == 200:
+            response.set_cookie(
+                "access_token",
+                response.data["access"],
+                max_age=int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds()),
+                httponly=True,
+                secure=settings.JWT_COOKIE_SECURE,
+                samesite="Lax",
+                domain=None,
+            )
+
+        return response
 
 
 @extend_schema(summary="Logout", description="Blacklist the refresh token")
 @api_view(["POST"])
 def logout_view(request):
     try:
-        refresh_token = request.data["refresh"]
-        token = RefreshToken(refresh_token)
-        token.blacklist()
-        return Response({"message": "Successfully logged out."}, status=status.HTTP_200_OK)
+        refresh_token = request.COOKIES.get("refresh_token") or request.data.get("refresh")
+        if refresh_token:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+
+        response = Response({"message": "Successfully logged out."}, status=status.HTTP_200_OK)
+        response.delete_cookie("access_token")
+        response.delete_cookie("refresh_token")
+        return response
     except TokenError:
         return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
-    except KeyError:
-        return Response({"error": "Refresh token is required"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @extend_schema(
@@ -97,20 +143,47 @@ def signup_view(request):
     serializer = SignUpSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
-
-        # Generate tokens
         refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
 
-        return Response(
+        response = Response(
             {
-                "user": {"id": user.id, "email": user.email},
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                },
                 "tokens": {
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token),
+                    "access": access_token,
+                    "refresh": refresh_token,
                 },
             },
             status=status.HTTP_201_CREATED,
         )
+
+        # Set cookies
+        response.set_cookie(
+            "access_token",
+            access_token,
+            max_age=int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds()),
+            httponly=True,
+            secure=settings.JWT_COOKIE_SECURE,
+            samesite="Lax",
+            domain=None,
+        )
+        response.set_cookie(
+            "refresh_token",
+            refresh_token,
+            max_age=int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds()),
+            httponly=True,
+            secure=settings.JWT_COOKIE_SECURE,
+            samesite="Lax",
+            domain=None,
+        )
+
+        return response
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

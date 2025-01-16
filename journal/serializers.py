@@ -1,7 +1,7 @@
 # journals/serializers.py
 from rest_framework import serializers
 
-from .models import JournalLog
+from .models import Habit, JournalLog
 
 
 class JournalLogCreateSerializer(serializers.ModelSerializer):
@@ -16,6 +16,14 @@ class JournalLogCreateSerializer(serializers.ModelSerializer):
         if data.get("type") == JournalLog.LogType.TODO and not data.get("scheduled_for"):
             raise serializers.ValidationError({"scheduled_for": "Scheduled time is required for todo type"})
         return data
+
+    def create(self, validated_data):
+        journal_log = JournalLog.objects.create(**validated_data)
+
+        if validated_data.get("type") == JournalLog.LogType.HABIT:
+            Habit.objects.create(text=validated_data["text"], user=validated_data["user"], source_log=journal_log)
+
+        return journal_log
 
 
 class JournalLogListSerializer(serializers.ModelSerializer):
