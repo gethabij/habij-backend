@@ -6,7 +6,7 @@ from .models import Habit, JournalLog
 
 @admin.register(JournalLog)
 class JournalLogAdmin(admin.ModelAdmin):
-    list_display = ("text", "user", "type", "scheduled_for", "done_at", "is_deleted", "created_at")
+    list_display = ("id", "text", "user", "type", "scheduled_for", "done_at", "is_deleted", "created_at")
     list_filter = ("type", "done_at", "deleted_at", "created_at")
     search_fields = ("text", "user__email")
     readonly_fields = ("created_at", "updated_at")

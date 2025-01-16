@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from django.utils import timezone
 
 from .models import JournalLog
-from .serializers import JournalLogCreateSerializer, JournalLogListSerializer
+from .serializers import JournalLogCreateSerializer, JournalLogListSerializer, HabitCreateSerializer
 
 
 class JournalLogFilter(filters.FilterSet):
@@ -68,7 +68,7 @@ class JournalLogViewSet(viewsets.ModelViewSet):
         description="Update the done_at field of a journal log to the current date and time.",
         responses={200: JournalLogListSerializer},
     )
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=["post"], url_path="done")
     def mark_as_done(self, _, pk=None):
         try:
             journal_log = self.get_queryset().get(pk=pk)
@@ -83,19 +83,35 @@ class JournalLogViewSet(viewsets.ModelViewSet):
         
 
     @extend_schema(
-        summary="Mark journal ha habitise ",
-        description="Update the type field of a journal log to habit",
+        summary="Change to habit",
+        description="Update a log or todo to a habit",
         responses={200: JournalLogListSerializer},
     )
-    @action(detail=True, methods=["post"])
-    def mark_as_habit(self, request, pk=None):
+    @action(detail=True, methods=["post"], url_path="habitize")
+    def create_habit_from_journal(self, request, pk=None):
+        # if they source journal was log, we should create a habit from it and return list of new habits from it. 
+        # of the source journal was todo, we should create a habit from  it and remove it from todos and return new todo and new habit list from it. 
+
         try:
-            journal_log = self.get_queryset().get(pk=pk)
-            if journal_log.type in [JournalLog.LogType.LOG, JournalLog.LogType.TODO]:
-                journal_log.type = JournalLog.LogType.HABIT
-                journal_log.save()
-                return Response(JournalLogListSerializer(journal_log).data, status=status.HTTP_200_OK)
-            else:
-                return Response({"detail": "Log is already habit"}, status=status.HTTP_400_BAD_REQUEST)
+            journal = self.get_queryset().get(pk=pk)
+
+            if journal.type == JournalLog.LogType.HABIT:
+                return Response({"detail": "the journal is already a habit."}, status=status.HTTP_400_BAD_REQUEST)
+            else:                
+                if journal.type == JournalLog.LogType.LOG:
+                    temp_data = {
+                        "text": journal.text,
+                        "source_log": journal.id,
+                        "user": request.user
+                    }
+                    serializer = HabitCreateSerializer(data=temp_data, context={'user': request.user})
+                    
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+                
+                else:
+                    return Response()
         except JournalLog.DoesNotExist:
-            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)()
