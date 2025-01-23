@@ -15,6 +15,7 @@ python-decouple = "^3.8"
 djangorestframework-simplejwt = "^5.4.0"
 django-filter = "^24.3"
 django-cors-headers = "^4.6.0"
+gunicorn = "^23.0.0"
 
 
 [tool.poetry.group.dev.dependencies]
