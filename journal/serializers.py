@@ -36,3 +36,8 @@ class HabitCreateSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "user": {"write_only": True},
         }
+
+class HabitListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Habit
+        fields = ("id", "text")

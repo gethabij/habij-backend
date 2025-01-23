@@ -8,8 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
 
-from .models import JournalLog
-from .serializers import JournalLogCreateSerializer, JournalLogListSerializer, HabitCreateSerializer
+from .models import JournalLog, Habit
+from .serializers import JournalLogCreateSerializer, JournalLogListSerializer, HabitCreateSerializer, HabitListSerializer
 
 
 class JournalLogFilter(filters.FilterSet):
@@ -89,29 +89,38 @@ class JournalLogViewSet(viewsets.ModelViewSet):
     )
     @action(detail=True, methods=["post"], url_path="habitize")
     def create_habit_from_journal(self, request, pk=None):
-        # if they source journal was log, we should create a habit from it and return list of new habits from it. 
-        # of the source journal was todo, we should create a habit from  it and remove it from todos and return new todo and new habit list from it. 
+        # if they source journal was log, we should create a habit and return list of new habits from it. 
+        # if the source journal was todo, we should create a habit from it and return list of new habits and todos. 
 
         try:
             journal = self.get_queryset().get(pk=pk)
-
             if journal.type == JournalLog.LogType.HABIT:
-                return Response({"detail": "the journal is already a habit."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"detail": "This log is already a habit"}, status=status.HTTP_400_BAD_REQUEST)
             else:                
                 if journal.type == JournalLog.LogType.LOG:
-                    temp_data = {
+
+                    journal.type = JournalLog.LogType.HABIT
+
+                    temp_habit_data = {
                         "text": journal.text,
                         "source_log": journal.id,
-                        "user": request.user
+                        "user": request.user.id
                     }
-                    serializer = HabitCreateSerializer(data=temp_data, context={'user': request.user})
+
+                    serializer = HabitCreateSerializer(data=temp_habit_data, context={'request': request})
                     
                     serializer.is_valid(raise_exception=True)
+
+                    journal.save()
                     serializer.save()
 
-                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+                    habits = Habit.objects.filter(user=request.user)
+                    habits_serializer = HabitListSerializer(habits, many=True)
+
+                    return Response(habits_serializer.data, status=status.HTTP_201_CREATED)
                 
                 else:
-                    return Response()
+                    print("handle todos here")
+                    return Response({"detail": "test."}, status=status.HTTP_200_OK)
         except JournalLog.DoesNotExist:
-            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)()
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
