@@ -1,0 +1,52 @@
+name: Habij Backend CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker image
+        run: |
+          REPO_NAME=${{ github.repository }}
+          IMAGE_NAME=${{ secrets.DOCKER_USERNAME }}/$(basename "$REPO_NAME")
+          docker build -t $IMAGE_NAME:latest .
+          docker push $IMAGE_NAME:latest
+
+      - name: Deploy to VPS
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          VPS_IP: ${{ secrets.VPS_IP }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          echo "${SSH_PRIVATE_KEY}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $VPS_IP >> ~/.ssh/known_hosts
+          ssh $VPS_USER@$VPS_IP << 'EOF'
+          REPO_NAME=$(basename $PWD)
+          IMAGE_NAME=${{ secrets.DOCKER_USERNAME }}/$REPO_NAME
+          docker pull $IMAGE_NAME:latest
+          docker stop $REPO_NAME-web || true && docker rm $REPO_NAME-web || true
+          docker run -d --name $REPO_NAME-web -p 8000:8000 \
+            --env-file /etc/$REPO_NAME/env/$REPO_NAME.env \
+            $IMAGE_NAME:latest
+
+          # Reload Nginx
+          sudo systemctl reload nginx
+          EOF
