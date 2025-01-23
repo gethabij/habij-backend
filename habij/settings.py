@@ -30,7 +30,7 @@ SECRET_KEY = config("SECRET_KEY", "secret")
 DEBUG = config("DEBUG", default=False, cast=bool)
 
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="").split(",")
-CSRF_TRUSTED_ORIGINS = config("CSRF_TRUSTED_ORIGINS", default="").split(",")
+CSRF_TRUSTED_ORIGINS = config("CSRF_TRUSTED_ORIGINS", default="http://localhost").split(",")
 
 # Application definition
 DJANGO_APPS = (
@@ -79,7 +79,7 @@ JWT_AUTH_COOKIE = "access_token"
 JWT_AUTH_REFRESH_COOKIE = "refresh_token"
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", "").split(",")
+CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", "http://localhost").split(",")
 CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = "habij.urls"
