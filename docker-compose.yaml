@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  web:
+    build:
+      context: .
+    container_name: habij-web
+    env_file:
+      - .env
+    volumes:
+      - static_volume:/app/static
+    expose:
+      - "8000"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15-alpine
+    container_name: habij-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+  static_volume:
