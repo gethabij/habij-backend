@@ -1,6 +1,8 @@
 # journals/serializers.py
 from rest_framework import serializers
+
 from .models import Habit, JournalLog
+
 
 class JournalLogCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -29,6 +31,7 @@ class JournalLogListSerializer(serializers.ModelSerializer):
         model = JournalLog
         fields = ("id", "text", "type", "scheduled_for", "done_at", "created_at")
 
+
 class HabitCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Habit
@@ -36,6 +39,7 @@ class HabitCreateSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "user": {"write_only": True},
         }
+
 
 class HabitListSerializer(serializers.ModelSerializer):
     class Meta:

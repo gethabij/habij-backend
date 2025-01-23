@@ -1,15 +1,20 @@
 # journals/views.py
+from django.utils import timezone
 from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.decorators import action
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.utils import timezone
 
-from .models import JournalLog, Habit
-from .serializers import JournalLogCreateSerializer, JournalLogListSerializer, HabitCreateSerializer, HabitListSerializer
+from .models import Habit, JournalLog
+from .serializers import (
+    HabitCreateSerializer,
+    HabitListSerializer,
+    JournalLogCreateSerializer,
+    JournalLogListSerializer,
+)
 
 
 class JournalLogFilter(filters.FilterSet):
@@ -62,7 +67,7 @@ class JournalLogViewSet(viewsets.ModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
-    
+
     @extend_schema(
         summary="Mark journal log as done",
         description="Update the done_at field of a journal log to the current date and time.",
@@ -80,7 +85,6 @@ class JournalLogViewSet(viewsets.ModelViewSet):
                 return Response({"detail": "Log is already marked as done."}, status=status.HTTP_400_BAD_REQUEST)
         except JournalLog.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-        
 
     @extend_schema(
         summary="Change to habit",
@@ -93,18 +97,13 @@ class JournalLogViewSet(viewsets.ModelViewSet):
             journal = self.get_queryset().get(pk=pk)
             if journal.type == JournalLog.LogType.HABIT:
                 return Response({"detail": "This log is already a habit"}, status=status.HTTP_400_BAD_REQUEST)
-            else:                
-
+            else:
                 journal.type = JournalLog.LogType.HABIT
 
-                temp_habit_data = {
-                    "text": journal.text,
-                    "source_log": journal.id,
-                    "user": request.user.id
-                }
+                temp_habit_data = {"text": journal.text, "source_log": journal.id, "user": request.user.id}
 
-                serializer = HabitCreateSerializer(data=temp_habit_data, context={'request': request})
-                
+                serializer = HabitCreateSerializer(data=temp_habit_data, context={"request": request})
+
                 serializer.is_valid(raise_exception=True)
 
                 journal.save()
