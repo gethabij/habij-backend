@@ -28,11 +28,10 @@ SECRET_KEY = config("SECRET_KEY", "secret")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default=False, cast=bool)
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="").split(",")
+CSRF_TRUSTED_ORIGINS = config("CSRF_TRUSTED_ORIGINS", default="").split(",")
 
 # Application definition
-
 DJANGO_APPS = (
     "django.contrib.admin",
     "django.contrib.auth",
@@ -49,7 +48,6 @@ PRIORITY_APPS = (
     "django_filters",
     "corsheaders",
 )
-
 LOCAL_APPS = (
     "journal",
     "users",
@@ -70,8 +68,6 @@ MIDDLEWARE = [
 ]
 
 JWT_COOKIE_SECURE = not DEBUG
-FRONTEND_URL = "http://localhost:3000"
-BACKEND_URL = "http://localhost:8000"
 
 # Cookie settings
 COOKIE_MAX_AGE = 3600 * 24 * 14
@@ -82,17 +78,8 @@ JWT_AUTH_COOKIE = "access_token"
 JWT_AUTH_REFRESH_COOKIE = "refresh_token"
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = [
-    FRONTEND_URL,
-    BACKEND_URL,
-]
+CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", "").split(",")
 CORS_ALLOW_CREDENTIALS = True
-
-# Add CSRF trusted origins
-CSRF_TRUSTED_ORIGINS = [
-    FRONTEND_URL,
-    BACKEND_URL,
-]
 
 ROOT_URLCONF = "habij.urls"
 
@@ -116,22 +103,18 @@ WSGI_APPLICATION = "habij.wsgi.application"
 
 
 # SPECTACULAR SETTINGS
-
 SPECTACULAR_SETTINGS = {
     "TITLE": "Habij API",
     "DESCRIPTION": "Habij project",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": "/api/",
-    # Remove this line causing the error
-    # "SERVE_AUTHENTICATION": ["Bearer"],
     "SWAGGER_UI_SETTINGS": {
         "deepLinking": True,
         "persistAuthorization": True,
         "displayOperationId": True,
         "filter": True,
     },
-    # Add these for JWT auth in Swagger
     "SECURITY": [{"Bearer": []}],
     "SECURITY_DEFINITIONS": {
         "Bearer": {
@@ -148,9 +131,6 @@ SPECTACULAR_SETTINGS = {
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    # "DEFAULT_AUTHENTICATION_CLASSES": [
-    #     "rest_framework_simplejwt.authentication.JWTAuthentication",
-    # ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "users.authentication.CustomJWTAuthentication",
     ],
@@ -164,14 +144,6 @@ REST_FRAMEWORK = {
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-#
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.sqlite3",
-#         "NAME": BASE_DIR / "db.sqlite3",
-#     }
-# }
-
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
