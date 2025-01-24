@@ -91,15 +91,22 @@ jobs:
 
       - name: Push Generated Types to habij-types
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAT_HABIJ_TYPES: ${{ secrets.secrets.REPO_ACCESS_TOKEN }}
         run: |
-          git clone https://x-access-token:${GITHUB_TOKEN}@github.com/gethabij/habij-types.git types-repo
-          cp -r generated-types/* types-repo/
+          git clone https://x-access-token:${PAT_HABIJ_TYPES}@github.com/gethabij/habij-types.git types-repo
+
+          # Debug: Check generated types
+          ls -la generated-types
+          cat generated-types/schema.ts || echo "No schema.ts found"
+
+          # Clean and copy
           cd types-repo
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
+          git rm -r * || true
+          cp -r ../generated-types/* .
           git add .
-          git diff --quiet && echo "No changes to commit" || git commit -m "chore: update generated types"
+
+          # Commit and push changes
+          git diff --quiet && echo "No changes to commit" || git commit -m "chore: update generated types at $(date)"
           git push origin main
 
   deploy:
