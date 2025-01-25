@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from datetime import timedelta
 from pathlib import Path
 
+import sentry_sdk
 from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -232,3 +233,11 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "users.User"
+
+sentry_sdk.init(
+    dsn=config("SENTRY_DSN", default=""),
+    traces_sample_rate=config("SENTRY_TRACES_SAMPLE_RATE", default=1.0, cast=float),
+    _experiments={
+        "continuous_profiling_auto_start": True,
+    },
+)
