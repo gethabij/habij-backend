@@ -37,7 +37,7 @@ jobs:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
     needs: lint # Ensures this job runs after linting
-    # if: github.ref == 'refs/heads/main' # Only runs on push to main branch
+    if: github.ref == 'refs/heads/main' # Only runs on push to main branch
     environment: production
 
     steps:
@@ -64,8 +64,10 @@ jobs:
     name: Generate TypeScript Types
     runs-on: ubuntu-latest
     needs: build
-    # if: github.ref == 'refs/heads/main' # Only runs on push to main branch
+    if: github.ref == 'refs/heads/main' # Only runs on push to main branch
     environment: production
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -80,34 +82,37 @@ jobs:
         run: poetry install --no-root
 
       - name: Generate OpenAPI Schema
-        run: poetry run python manage.py spectacular --file schema.json
+        run: poetry run python manage.py spectacular --file schema.yaml
 
       - name: Generate TypeScript Types
         run: |
-          npx @openapitools/openapi-generator-cli generate \
-            -i schema.json \
-            -g typescript-fetch \
-            -o generated-types
-
+          npx openapi-typescript schema.yaml \
+            -o schema.d.ts
       - name: Push Generated Types to habij-types
         env:
-          PAT_HABIJ_TYPES: ${{ secrets.secrets.REPO_ACCESS_TOKEN }}
+          PAT_HABIJ_TYPES: ${{ secrets.REPO_ACCESS_TOKEN }}
         run: |
+          # Clone the repository
           git clone https://x-access-token:${PAT_HABIJ_TYPES}@github.com/gethabij/habij-types.git types-repo
-
-          # Debug: Check generated types
-          ls -la generated-types
-          cat generated-types/schema.ts || echo "No schema.ts found"
 
           # Clean and copy
           cd types-repo
           git rm -r * || true
-          cp -r ../generated-types/* .
-          git add .
+          cp ../schema.d.ts .
 
-          # Commit and push changes
-          git diff --quiet && echo "No changes to commit" || git commit -m "chore: update generated types at $(date)"
-          git push origin main
+          # Fix for extraheader removal (ensure no errors occur)
+          git config --unset-all http.extraheader || true
+
+          # Configure Git user
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          # Commit changes
+          git add .
+          git commit -m "chore: update generated types at $(date)" || echo "No changes to commit."
+
+          # Push changes
+          git push --force https://x-access-token:${PAT_HABIJ_TYPES}@github.com/gethabij/habij-types.git
 
   deploy:
     name: Deploy to VPS
@@ -162,7 +167,11 @@ jobs:
 
           docker run -d --name $CONTAINER_NAME -p 8000:8000 \
             --env-file /etc/$REPO_NAME/env/$REPO_NAME.env \
+            --network="host" \
             $IMAGE_NAME:latest
+
+          docker exec -it $CONTAINER_NAME \
+            python manage.py migrate
 
           # Reload Nginx
           sudo systemctl reload nginx

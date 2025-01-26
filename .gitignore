@@ -171,3 +171,9 @@ cython_debug/
 .pypirc
 
 staticfiles/
+
+schema.yaml
+schema.d.ts
+openapitools.json
+generated-types
+generated-types.ts
