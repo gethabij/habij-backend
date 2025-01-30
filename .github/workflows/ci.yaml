@@ -37,6 +37,7 @@ jobs:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
     needs: lint # Ensures this job runs after linting
+    if: github.ref == 'refs/heads/main' # Only runs on push to main branch
     environment: production
 
     steps:
@@ -58,6 +59,60 @@ jobs:
           IMAGE_NAME=${{ secrets.DOCKER_USERNAME }}/$REPO_NAME
           docker build -t $IMAGE_NAME:latest .
           docker push $IMAGE_NAME:latest
+
+  generate-types:
+    name: Generate TypeScript Types
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' # Only runs on push to main branch
+    environment: production
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: "1.6.1"
+
+      - name: Install Dependencies
+        run: poetry install --no-root
+
+      - name: Generate OpenAPI Schema
+        run: poetry run python manage.py spectacular --file schema.yaml
+
+      - name: Generate TypeScript Types
+        run: |
+          npx openapi-typescript schema.yaml \
+            -o schema.d.ts
+      - name: Push Generated Types to habij-types
+        env:
+          PAT_HABIJ_TYPES: ${{ secrets.REPO_ACCESS_TOKEN }}
+        run: |
+          # Clone the repository
+          git clone https://x-access-token:${PAT_HABIJ_TYPES}@github.com/gethabij/habij-types.git types-repo
+
+          # Clean and copy
+          cd types-repo
+          git rm -r * || true
+          cp ../schema.d.ts .
+
+          # Fix for extraheader removal (ensure no errors occur)
+          git config --unset-all http.extraheader || true
+
+          # Configure Git user
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          # Commit changes
+          git add .
+          git commit -m "chore: update generated types at $(date)" || echo "No changes to commit."
+
+          # Push changes
+          git push --force https://x-access-token:${PAT_HABIJ_TYPES}@github.com/gethabij/habij-types.git
 
   deploy:
     name: Deploy to VPS
@@ -112,7 +167,11 @@ jobs:
 
           docker run -d --name $CONTAINER_NAME -p 8000:8000 \
             --env-file /etc/$REPO_NAME/env/$REPO_NAME.env \
+            --network="host" \
             $IMAGE_NAME:latest
+
+          docker exec -it $CONTAINER_NAME \
+            python manage.py migrate
 
           # Reload Nginx
           sudo systemctl reload nginx
