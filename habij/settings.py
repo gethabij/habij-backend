@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import os
 from datetime import timedelta
 from pathlib import Path
 
@@ -156,7 +157,8 @@ DATABASES = {
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
-        "CONN_MAX_AGE": config("DB_CONN_MAX_AGE", default=60, cast=int),  # 1 minute persistent connection
+        # 1 minute persistent connection
+        "CONN_MAX_AGE": config("DB_CONN_MAX_AGE", default=60, cast=int),
     }
 }
 
@@ -225,8 +227,32 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+
+AWS_S3_ENDPOINT_URL = config("AWS_S3_ENDPOINT_URL", "")
+AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID", "")
+AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY", "")
+AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME", "")
+
+USE_S3 = config("USE_S3", default=False, cast=bool)
+if USE_S3:
+    STORAGES = {
+        "default": {"BACKEND": "storages.backends.s3boto3.S3Boto3Storage"},
+        "staticfiles": {"BACKEND": "storages.backends.s3boto3.S3StaticStorage"},
+    }
+    AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
+
+    # s3 static settings
+    STATIC_LOCATION = "static"
+    STATIC_URL = f"{AWS_S3_ENDPOINT_URL}/{STATIC_LOCATION}/"
+
+    # s3 private media settings
+    PRIVATE_MEDIA_LOCATION = "private"
+else:
+    STATIC_URL = "/staticfiles/"
+    STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+    MEDIA_URL = "/mediafiles/"
+    MEDIA_ROOT = os.path.join(BASE_DIR, "mediafiles")
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
