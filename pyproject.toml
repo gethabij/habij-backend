@@ -17,6 +17,8 @@ django-filter = "^24.3"
 django-cors-headers = "^4.6.0"
 gunicorn = "^23.0.0"
 sentry-sdk = {extras = ["django"], version = "^2.20.0"}
+django-storages = "^1.14.4"
+boto3 = "^1.36.12"
 
 
 [tool.poetry.group.dev.dependencies]

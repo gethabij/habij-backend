@@ -173,6 +173,9 @@ jobs:
           docker exec -it $CONTAINER_NAME \
             python manage.py migrate
 
+          docker exec -it $CONTAINER_NAME \
+            python manage.py collectstatic --noinput
+
           # Reload Nginx
           sudo systemctl reload nginx
           EOF
